@@ -1,0 +1,33 @@
+﻿name: Source checks
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for forbidden binary and private artifacts
+        shell: pwsh
+        run: |
+          $bad = git ls-files | Where-Object { $_ -match '(?i)(^|/)(bin|obj)/|\.(exe|dll|pdb|obj|lib|exp|zip|gz|mmdb|log)$|(^|/)(rules|status|network-adapters)\.json$|(^|/)RecoveredApps\.tsv$' }
+          if ($bad) { $bad; throw 'Forbidden repository artifacts found' }
+      - name: Parse PowerShell scripts
+        shell: pwsh
+        run: |
+          $files = git ls-files '*.ps1'
+          foreach ($file in $files) { $tokens = $null; $errors = $null; [void][System.Management.Automation.Language.Parser]::ParseFile((Join-Path $pwd $file), [ref]$tokens, [ref]$errors); if ($errors) { $errors | Out-String | Write-Error; exit 1 } }
+      - name: Test cleanup and portability (Windows PowerShell)
+        shell: powershell
+        run: |
+          ./tests/Test-UninstallCleanup.ps1
+          if (-not $?) { exit 1 }
+          ./tests/portability/Test-Portability.ps1 -Backend (Resolve-Path ./backend)
+          if (-not $?) { exit 1 }
+      - name: Test cleanup and portability (PowerShell 7)
+        shell: pwsh
+        run: |
+          ./tests/Test-UninstallCleanup.ps1
+          if (-not $?) { exit 1 }
+          ./tests/portability/Test-Portability.ps1 -Backend (Resolve-Path ./backend)
+          if (-not $?) { exit 1 }

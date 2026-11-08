@@ -1,0 +1,22 @@
+﻿# Build outputs and binaries are distributed as release assets, not source.
+/artifacts/
+/dist/
+/.tools/
+**/bin/
+**/obj/
+*.exe
+*.dll
+*.pdb
+*.zip
+*.gz
+*.mmdb
+*.log
+RecoveredApps.tsv
+rules.json
+status.json
+network-adapters.json
+
+*.obj
+*.lib
+*.exp
+**/native-build/

@@ -1,0 +1,365 @@
+﻿<Window x:Class="BindIPManager.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:BindIPManager.ViewModels"
+        Title="Network Router 網路分流管理" Height="800" Width="1160"
+        MinHeight="540" MinWidth="860"
+        Icon="pack://application:,,,/Assets/app.ico"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource BgBrush}"
+        FontFamily="Segoe UI Variable Text, Segoe UI">
+
+    <Window.DataContext>
+        <vm:MainViewModel />
+    </Window.DataContext>
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="280" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ============ Sidebar (glass) ============ -->
+        <Border Grid.Column="0" Margin="16,16,8,16" CornerRadius="18"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+            <DockPanel Margin="16" LastChildFill="True">
+
+                <!-- Logo -->
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="2,2,0,18">
+                    <Border Width="38" Height="38" CornerRadius="12" Background="{StaticResource AccentGradBrush}">
+                        <TextBlock Text="↯" FontSize="21" Foreground="White"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="三網路規則管理" FontSize="15" FontWeight="SemiBold" />
+                        <TextBlock Text="沿用 BindRouter 介面" FontSize="10.5"
+                                   Foreground="{StaticResource MutedBrush}" Margin="0,1,0,0" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- New profile -->
+                <Button DockPanel.Dock="Top" Content="＋  新增程式" Style="{StaticResource AccentButton}"
+                        HorizontalAlignment="Stretch" Margin="0,0,0,18" Padding="16,10"
+                        Command="{Binding NewProfileCommand}" />
+
+                <TextBlock DockPanel.Dock="Top" Text="程式清單" Style="{StaticResource Label}" Margin="6,0,0,8" />
+                <CheckBox DockPanel.Dock="Top" Content="顯示未執行的程式" IsChecked="{Binding ShowInactivePrograms}"
+                          IsEnabled="{Binding CanEdit}" Margin="6,0,0,8" />
+                <TextBlock DockPanel.Dock="Top" Text="自動顯示執行中或目前編輯的程式，關閉後規則仍會保留。"
+                           FontSize="10.5" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="6,0,0,12" />
+
+                <TextBlock DockPanel.Dock="Top" Text="{Binding PathWarningText}" Visibility="{Binding HasPathWarnings, Converter={StaticResource BoolToVis}}" Foreground="{StaticResource BadBrush}" TextWrapping="Wrap" Margin="6,0,0,10" />
+
+                <!-- Engine problem chip — only shown when the bundled engine is missing -->
+                <Border DockPanel.Dock="Bottom" Margin="0,14,0,0" CornerRadius="12" Padding="12,10"
+                        Background="#26F87171" BorderBrush="{StaticResource BadBrush}" BorderThickness="1">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding EngineOk}" Value="False">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Width="8" Height="8" Fill="{StaticResource BadBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="執行檔不完整，請重新解壓完整工具包。" Margin="8,0,0,0" FontSize="11"
+                                   Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Profiles list -->
+                <Grid>
+                <TextBlock Text="目前沒有已加入且正在執行的程式 可按新增程式選擇"
+                           TextWrapping="Wrap" Margin="6,4,6,0" Foreground="{StaticResource MutedBrush}" FontSize="12">
+                    <TextBlock.Style><Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers><DataTrigger Binding="{Binding HasVisibleProfiles}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                    </Style></TextBlock.Style>
+                </TextBlock>
+                <ListBox ItemsSource="{Binding ProfilesView}" SelectedItem="{Binding SelectedProfile}" IsEnabled="{Binding CanEdit}"
+                         Style="{StaticResource ProfileList}"
+                         ItemContainerStyle="{StaticResource ProfileItem}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13.5"
+                                           TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding ProgramName}" FontSize="11"
+                                           Foreground="{StaticResource MutedBrush}"
+                                           TextTrimming="CharacterEllipsis" Margin="0,3,0,0" />
+                                <TextBlock FontSize="11" Foreground="{StaticResource AccentBrush}"
+                                           Margin="0,2,0,0" TextTrimming="CharacterEllipsis">
+                                    <Run Text="→ " /><Run Text="{Binding AdapterName}" />
+                                </TextBlock>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                </Grid>
+            </DockPanel>
+        </Border>
+
+        <!-- ============ Main column ============ -->
+        <Grid Grid.Column="1" Margin="8,16,16,16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Top bar (glass) -->
+            <Border Grid.Row="0" CornerRadius="16" Padding="18,12" Margin="0,0,0,10"
+                    Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                <DockPanel LastChildFill="False">
+                    <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
+                        <TextBlock Text="網路限制設定" FontSize="16" FontWeight="SemiBold" />
+                        <TextBlock Text="先選程式，再設定可以使用的網路"
+                                   FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,1,0,0" />
+                    </StackPanel>
+                    <Button DockPanel.Dock="Right" Content="⋮" Style="{StaticResource GhostButton}"
+                            Padding="13,7" FontSize="15" Click="OnMoreMenu">
+                        <Button.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="連線診斷" Click="OnDiagnostics" />
+                                <MenuItem Header="⚙  所有功能設定" Click="OnOptions" />
+                                <MenuItem Header="📋  查看執行記錄" Click="OnLogs" />
+                                <MenuItem Header="↺  恢復網路並保留規則" Click="OnRestore" />
+                                <MenuItem Header="▶  啟用所有已保存的規則" Click="OnEnable" /><MenuItem Header="重設全部規則" Click="OnReset" /><Separator />
+                                <MenuItem Header="🗕  收到右下角通知區" Click="OnMinimizeToTray" />
+                                <MenuItem Header="關閉視窗並保留限制" Click="OnExit" />
+                                <MenuItem Header="結束圖示 不解除保護" Click="OnExitTray" />
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
+                    <Button DockPanel.Dock="Right" Content="連線診斷" Style="{StaticResource GhostButton}" Margin="0,0,10,0" Click="OnDiagnostics" />
+                    <Button DockPanel.Dock="Right" Content="⚙  所有功能設定" Style="{StaticResource GhostButton}" Margin="0,0,10,0" Click="OnOptions" />
+                </DockPanel>
+            </Border>
+
+            <StackPanel Grid.Row="1">
+              <Border Background="#1F5B8CFF" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1" CornerRadius="12" Padding="14,10" Margin="0,0,0,10">
+                <TextBlock Text="{Binding ProtectionNotice}" TextWrapping="Wrap" FontSize="11" />
+              </Border>            <!-- Elevation warning -->
+            <Border  Background="#26F87171" BorderBrush="{StaticResource BadBrush}"
+                    BorderThickness="1" CornerRadius="12" Margin="0,0,0,10" Padding="14,10"
+                    Visibility="{Binding ShowElevationWarning, Converter={StaticResource BoolToVis}}">
+                <Grid>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,150,0">
+                        <TextBlock Text="⚠" FontSize="15" Foreground="{StaticResource BadBrush}" VerticalAlignment="Center" />
+                        <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" FontSize="12"
+                                   Text="設定網路需要管理員權限，請按「以管理員重新開啟」。" />
+                    </StackPanel>
+                    <Button Content="以管理員重新開啟" Style="{StaticResource AccentButton}" Padding="12,7"
+                            HorizontalAlignment="Right" VerticalAlignment="Center"
+                            Command="{Binding RestartElevatedCommand}" />
+                </Grid>
+            </Border>
+
+            </StackPanel>
+            <!-- Content -->
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+
+                    <Border CornerRadius="18" Padding="18,16" Margin="0,0,0,12"
+                            Background="{StaticResource SurfaceAltBrush}" BorderBrush="{StaticResource AccentBrush}" BorderThickness="1">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <Ellipse x:Name="PaidIndicator" Width="10" Height="10" Fill="#94A3B8" Margin="0,0,9,0" VerticalAlignment="Center" />
+                                <TextBlock Text="計費網卡總開關" FontSize="16" FontWeight="SemiBold" />
+                            </StackPanel>
+                            <TextBlock x:Name="PaidStatus" Text="正在讀取狀態" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,4" />
+                            <TextBlock x:Name="PaidDetail" Text="每次重新開機預設禁止使用 計費網卡" Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10" />
+                            <WrapPanel Margin="0,0,0,6">
+                                <Button x:Name="PaidAllowButton" Content="允許 計費網卡 本次開機" Style="{StaticResource AccentButton}" Click="OnPaidAllow" IsEnabled="False" Margin="0,0,8,6" />
+                                <Button x:Name="PaidBlockButton" Content="禁止 計費網卡" Style="{StaticResource GhostButton}" Click="OnPaidBlock" IsEnabled="False" Margin="0,0,8,6" />
+                                <Button x:Name="PaidInstallButton" Content="啟用開機保護" Style="{StaticResource GhostButton}" Click="OnPaidInstall" IsEnabled="False" Margin="0,0,0,6" />
+                            </WrapPanel>
+                            <TextBlock Text="這是整台電腦的計費網路保護。允許後仍需符合各程式的既有規則，並不會強制改走有線。恢復網路與關閉視窗都不會解除這項保護。" Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Editor card (glass) -->
+                    <Border CornerRadius="18" Padding="22,18" Margin="0,0,0,12"
+                            Background="{StaticResource SurfaceBrush}"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                        <StackPanel>
+                            <TextBox Style="{StaticResource TitleBox}" Margin="0,0,0,14"
+                                     Text="{Binding Name, Mode=OneWay}" IsReadOnly="True"
+                                     ToolTip="目前選擇的程式" />
+
+                            <TextBlock Text="程式位置" Style="{StaticResource Label}" />
+                            <Grid Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding ProgramPath, Mode=OneWay}" IsReadOnly="True" />
+                                <Button Grid.Column="2" Content="選擇應用程式" Style="{StaticResource GhostButton}"
+                                        Command="{Binding BrowseCommand}" />
+                            </Grid>
+
+                            <TextBlock Text="{Binding ProgramHealth}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                            <Button Content="重新綁定執行中的程式" HorizontalAlignment="Left" Style="{StaticResource GhostButton}" Click="OnRebind" Visibility="{Binding CanRebind, Converter={StaticResource BoolToVis}}" Margin="0,0,0,12" />
+                            <TextBlock Text="限制方式" Style="{StaticResource Label}" />
+                            <ComboBox ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}" DisplayMemberPath="Name" Margin="0,0,0,14" IsEnabled="{Binding CanEdit}" />
+                            <TextBlock Text="網路選項" Style="{StaticResource Label}" />
+                            <TextBlock Text="{Binding NetworkHelp}" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,10" />
+                            <ItemsControl ItemsSource="{Binding Networks}" IsEnabled="{Binding CanEdit}">
+                              <ItemsControl.ItemTemplate><DataTemplate>
+                                <Border CornerRadius="10" Background="#0DFFFFFF" Padding="10,7" Margin="0,0,0,6">
+                                  <DockPanel>
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                      <Button Content="↑" Style="{StaticResource GhostButton}" Padding="9,3" Margin="5,0,0,0" Command="{Binding DataContext.MoveUpCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                      <Button Content="↓" Style="{StaticResource GhostButton}" Padding="9,3" Margin="5,0,0,0" Command="{Binding DataContext.MoveDownCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
+                                    </StackPanel>
+                                    <CheckBox IsChecked="{Binding Selected}" VerticalAlignment="Center"><StackPanel><TextBlock Text="{Binding Name}" FontWeight="SemiBold"/><TextBlock Text="{Binding Detail}" FontSize="11" Foreground="{StaticResource MutedBrush}"/></StackPanel></CheckBox>
+                                  </DockPanel>
+                                </Border>
+                              </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <StackPanel Orientation="Horizontal" Margin="0,9,0,15">
+                              <Button Content="保存規則" Command="{Binding SaveCommand}" Style="{StaticResource GhostButton}" />
+                              <Button Content="重新整理" Command="{Binding RefreshCommand}" Style="{StaticResource GhostButton}" Margin="10,0,0,0" />
+                              <TextBlock Text="{Binding EngineState}" Foreground="{StaticResource AccentBrush}" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Rectangle Height="1" Fill="{StaticResource HairlineBrush}" Margin="0,0,0,16" />
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Content="▶  保存並啟用限制" ToolTip="保存這項規則，並啟用所有已保存的規則" Style="{StaticResource AccentButton}"
+                                        Command="{Binding LaunchCommand}" />
+                                <Button Grid.Column="2" Content="✓  檢查設定" Style="{StaticResource GhostButton}"
+                                        ToolTip="只檢查設定格式，不進行連線測試"
+                                        Command="{Binding TestBindingCommand}" />
+                                <Button Grid.Column="4" Content="移除程式" Style="{StaticResource GhostButton}"
+                                        Foreground="{StaticResource BadBrush}"
+                                        Command="{Binding DeleteProfileCommand}" />
+                            </Grid>
+
+                            <!-- Test binding result -->
+                            <Border Margin="0,14,0,0" CornerRadius="12" Padding="12,10"
+                                    Background="#26000000" BorderThickness="1"
+                                    Visibility="{Binding TestRan, Converter={StaticResource BoolToVis}}">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding TestOk}" Value="True">
+                                                <Setter Property="BorderBrush" Value="{StaticResource GoodBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="{Binding TestResult}" TextWrapping="Wrap" FontSize="12">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding TestOk}" Value="True">
+                                                    <Setter Property="Foreground" Value="{StaticResource GoodBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Active bindings card (glass) -->
+                    <Border CornerRadius="18" Padding="18,16"
+                            Background="{StaticResource SurfaceAltBrush}"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,12">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="已設定的規則" Style="{StaticResource Label}" Margin="0"
+                                               VerticalAlignment="Center" />
+                                    <Border CornerRadius="9" Background="#1F5B8CFF" Padding="8,2" Margin="8,0,0,0"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding VisibleRuleCount}" FontSize="11"
+                                                   FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" />
+                                    </Border>
+                                </StackPanel>
+                                <Button HorizontalAlignment="Right" Padding="12,6" Content="↺  恢復網路"
+                                        Style="{StaticResource GhostButton}" Command="{Binding RestoreCommand}" />
+                            </Grid>
+
+                            <TextBlock Text="{Binding EmptyRulesText}"
+                                       Foreground="{StaticResource MutedBrush}" FontSize="12" TextWrapping="Wrap">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasActiveBindings}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <TextBlock Text="{Binding DnsStatus}" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                            <ItemsControl ItemsSource="{Binding ActiveBindingsView}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#1234D399" CornerRadius="12"
+                                                Padding="13,10" Margin="0,0,0,8"
+                                                BorderBrush="#4034D399" BorderThickness="1">
+                                            <Grid>
+                                                <Grid VerticalAlignment="Center" Margin="0,0,135,0">
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{Binding Display}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                                    <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                                        <TextBlock Text="{Binding Sub}" FontSize="12" Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap" />
+                                                        <TextBlock Text="{Binding Current}" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                                <Button HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                        Padding="13,5" Content="{Binding ToggleText}"
+                                                        Style="{StaticResource GhostButton}"
+                                                        Foreground="{StaticResource BadBrush}"
+                                                        Command="{Binding DataContext.StopBindingCommand,
+                                                                   RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Status strip (glass) -->
+            <Border Grid.Row="3" CornerRadius="12" Padding="14,8" Margin="0,10,0,0"
+                    Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse Width="6" Height="6" Fill="{StaticResource AccentBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Status}" Foreground="{StaticResource MutedBrush}" FontSize="11.5"
+                               Margin="9,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

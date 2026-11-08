@@ -1,0 +1,15 @@
+This bundle uses unmodified official Mihomo v1.19.32 Windows amd64 compatible.
+Mihomo is licensed under GNU GPL version 3. See Mihomo-GPL-3.txt.
+Complete upstream tag source archive is included as mihomo-v1.19.32-source.zip.
+Upstream source and build information: https://github.com/MetaCubeX/mihomo/tree/v1.19.32
+Release: https://github.com/MetaCubeX/mihomo/releases/tag/v1.19.32
+The official binary includes its normal Go dependencies and Windows TUN implementation.
+Dependency license details are in each upstream dependency as listed by go.mod/go.sum.
+The sing-tun v0.4.27 license is included. Its source is available at:
+https://github.com/metacubex/sing-tun/tree/v0.4.27
+No upstream binary has been patched. No subscription or remote proxy is configured.
+BindRouter interface
+Copyright (c) 2026 Aydin Farro MIT
+https://github.com/aydinfarro/BindRouter/tree/v1.2.0
+Theme MainWindow layout MVVM utilities and icon reused with modifications as documented
+License BindRouter-MIT.txt  Original source BindRouter-v1.2.0-source.zip

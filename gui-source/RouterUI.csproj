@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+ <PropertyGroup>
+  <OutputType>WinExe</OutputType><TargetFramework>net8.0-windows</TargetFramework>
+  <UseWPF>true</UseWPF><UseWindowsForms>true</UseWindowsForms>
+  <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  <StartupObject>BindIPManager.EntryPoint</StartupObject>
+  <ApplicationManifest>app.manifest</ApplicationManifest>
+  <Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings>
+  <AssemblyName>NetworkRouter</AssemblyName><RootNamespace>BindIPManager</RootNamespace>
+  <ApplicationIcon>Assets\app.ico</ApplicationIcon><Version>1.0.0</Version>
+ </PropertyGroup>
+ <ItemGroup><Content Include="..\backend\OptionsSchema.json" Link="OptionsSchema.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" /></ItemGroup>
+ <ItemGroup><Using Remove="System.Windows.Forms"/><Using Remove="System.Drawing"/><Resource Include="Assets\app.ico"/></ItemGroup>
+</Project>

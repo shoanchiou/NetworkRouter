@@ -1,0 +1,63 @@
+﻿name: Build release candidate
+on:
+  workflow_dispatch:
+    inputs:
+      core_url:
+        description: HTTPS URL for the reviewed fixed mihomo.exe
+        required: true
+      mihomo_source_url:
+        description: HTTPS URL for the matching fixed source ZIP
+        required: true
+      bindrouter_source_url:
+        description: HTTPS URL for the reviewed BindRouter source ZIP
+        required: true
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test recovery plan with mocks
+        shell: powershell
+        run: ./tests/Test-UninstallCleanup.ps1
+      - name: Fetch supplied dependencies
+        shell: pwsh
+        env:
+          CORE_URL: ${{ inputs.core_url }}
+          MIHOMO_SOURCE_URL: ${{ inputs.mihomo_source_url }}
+          BINDROUTER_SOURCE_URL: ${{ inputs.bindrouter_source_url }}
+        run: |
+          New-Item -ItemType Directory -Force artifacts/dependencies/core, artifacts/dependencies/licenses | Out-Null
+          foreach ($item in @(@($env:CORE_URL,'artifacts/dependencies/core/mihomo.exe'), @($env:MIHOMO_SOURCE_URL,'artifacts/dependencies/licenses/mihomo-v1.19.32-source.zip'), @($env:BINDROUTER_SOURCE_URL,'artifacts/dependencies/licenses/BindRouter-v1.2.0-source.zip'))) {
+            $uri = [uri]$item[0]
+            if ($uri.Scheme -ne 'https' -or $uri.UserInfo) { throw 'Dependencies require HTTPS URLs without credentials' }
+            Invoke-WebRequest -Uri $uri -OutFile $item[1]
+          }
+      - name: Build payload in VS x64 environment
+        shell: cmd
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          powershell -NoProfile -ExecutionPolicy Bypass -File build\Build-Payload.ps1 -DependencyRoot artifacts\dependencies
+          if errorlevel 1 exit /b 1
+      - name: Compile setup and checksum
+        shell: pwsh
+        run: |
+          $payloads = @(Get-ChildItem artifacts -Directory -Filter 'payload-*')
+          if ($payloads.Count -ne 1) { throw 'Expected one payload' }
+          $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) { $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe' }
+          if (-not (Test-Path $iscc)) { $iscc = Join-Path $env:ProgramFiles 'Inno Setup 7/ISCC.exe' }
+          if (-not (Test-Path $iscc)) { throw 'Install verified Inno Setup 6.7.4 or 7.1.1 on the runner' }
+          & $iscc ("/DPayloadDir=" + $payloads[0].FullName) installer/NetworkRouter.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
+          $setup = Get-Item dist/NetworkRouter-Setup-1.0.0-x64.exe
+          $hash = (Get-FileHash $setup.FullName -Algorithm SHA256).Hash
+          Set-Content -Path dist/SHA256.txt -Value "$hash  $($setup.Name)" -Encoding ascii
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NetworkRouter-unverified-release-candidate
+          path: |
+            dist/NetworkRouter-Setup-1.0.0-x64.exe
+            dist/SHA256.txt
+          if-no-files-found: error
